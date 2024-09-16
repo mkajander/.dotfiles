@@ -119,3 +119,36 @@ alias copilot="gh copilot"
 alias gcs="gh copilot suggest"
 alias gce="gh copilot explain"
 alias dotfiles='git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
+
+autoload bashcompinit && bashcompinit
+source $(brew --prefix)/etc/bash_completion.d/az
+
+kexec() {
+  local namespace=""
+  local pod_name=""
+
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      -n|--namespace)
+        namespace="$2"
+        shift # past argument
+        shift # past value
+        ;;
+      *)
+        pod_name="$1"
+        shift # past argument
+        ;;
+    esac
+  done
+
+  if [ -z "$pod_name" ]; then
+    echo "Usage: kexec [-n namespace] <pod-name>"
+    return 1
+  fi
+
+  if [ -n "$namespace" ]; then
+    kubectl exec --stdin --tty "$pod_name" -n "$namespace" -- /bin/bash
+  else
+    kubectl exec --stdin --tty "$pod_name" -- /bin/bash
+  fi
+}
