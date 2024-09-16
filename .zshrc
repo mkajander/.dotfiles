@@ -77,7 +77,7 @@ ZSH_THEME="robbyrussell"
 # Custom plugins may be added to $ZSH_CUSTOM/plugins/
 # Example format: plugins=(rails git textmate ruby lighthouse)
 # Add wisely, as too many plugins slow down shell startup.
-plugins=(git node 1password azure github brew docker dotnet gh helm history kubectl kubectx macos zsh-syntax-highlighting zsh-autosuggestions)
+plugins=(git node 1password azure github brew docker dotnet gh helm history kubectl kubectx macos)
 
 source $ZSH/oh-my-zsh.sh
 
