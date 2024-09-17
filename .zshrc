@@ -152,3 +152,12 @@ kexec() {
     kubectl exec --stdin --tty "$pod_name" -- /bin/bash
   fi
 }
+
+gconfig_ssh() {
+  if [ -z "$1" ]; then
+    echo "Usage: gconfig_ssh <path_to_ssh_key>"
+    return 1
+  fi
+
+  git config --add --local core.sshCommand "ssh -i $1"
+}
