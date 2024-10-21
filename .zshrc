@@ -123,6 +123,10 @@ alias dotfiles='git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
 autoload bashcompinit && bashcompinit
 source $(brew --prefix)/etc/bash_completion.d/az
 
+export PATH=$HOME/.dotnet/tools:$PATH
+# nvm
+source ~/.nvm/nvm.sh
+
 kexec() {
   local namespace=""
   local pod_name=""
