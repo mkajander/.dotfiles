@@ -165,3 +165,22 @@ gconfig_ssh() {
 
   git config --add --local core.sshCommand "ssh -i $1"
 }
+screenlayout() {
+    if [ "$#" -ne 1 ]; then
+        echo "Usage: screenlayout <home|work>"
+        return 1
+    fi
+
+    case $1 in
+        home)
+            displayplacer "id:6EBF5F0B-FC9C-427D-B97D-D9656B659F67 res:2560x1440 hz:60 color_depth:8 enabled:true scaling:off origin:(0,0) degree:0" "id:52AC177D-CA6B-449C-A1C6-971A1DCD16B4 res:2560x1440 hz:144 color_depth:8 enabled:true scaling:off origin:(2560,0) degree:0"
+            ;;
+        work)
+            echo "work"
+            ;;
+        *)
+            echo "Invalid argument. Use 'home' or 'work'."
+            return 1
+            ;;
+    esac
+}
