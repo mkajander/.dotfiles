@@ -77,10 +77,13 @@ ZSH_THEME="robbyrussell"
 # Custom plugins may be added to $ZSH_CUSTOM/plugins/
 # Example format: plugins=(rails git textmate ruby lighthouse)
 # Add wisely, as too many plugins slow down shell startup.
-plugins=(git node 1password azure github brew docker dotnet gh helm history kubectl kubectx macos)
+plugins=(git node 1password azure github brew docker dotnet gh helm history kubectl kubectx macos web-search)
+# custom search engines have to be defined before sourcing oh-my-zsh
+ZSH_WEB_SEARCH_ENGINES=(perplexity "https://www.perplexity.ai/search/new?q=" perp "https://www.perplexity.ai/search/new?q=")
 
 source $ZSH/oh-my-zsh.sh
 
+# use  ls -l !! | xclip
 # User configuration
 
 # export MANPATH="/usr/local/man:$MANPATH"
@@ -109,11 +112,11 @@ source $ZSH/oh-my-zsh.sh
 # Example aliases
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
-source /opt/homebrew/share/powerlevel10k/powerlevel10k.zsh-theme
+source $(brew --prefix)/share/powerlevel10k/powerlevel10k.zsh-theme
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
-source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+source $(brew --prefix)/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 source $(brew --prefix)/share/zsh-autosuggestions/zsh-autosuggestions.zsh
 alias copilot="gh copilot"
 alias gcs="gh copilot suggest"
@@ -121,8 +124,7 @@ alias gce="gh copilot explain"
 alias dotfiles='git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
 
 autoload bashcompinit && bashcompinit
-source $(brew --prefix)/etc/bash_completion.d/az
-
+[[ -r "$(brew --prefix)/etc/profile.d/bash_completion.sh" ]] && . "$(brew --prefix)/etc/profile.d/bash_completion.sh"
 
 export PATH=$HOME/.dotnet/tools:$PATH
 # nvm
@@ -259,3 +261,20 @@ eval $(thefuck --alias fk)
 eval "$(zoxide init zsh)"
 
 alias cd="z"
+
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
+
+#set history size
+export HISTSIZE=100000
+#save history after logout
+export SAVEHIST=100000
+#history file
+export HISTFILE=~/.zhistory
+#append into history file
+setopt INC_APPEND_HISTORY
+#save only one command if 2 common are same and consistent
+setopt HIST_IGNORE_DUPS
+#add timestamp for each entry
+setopt EXTENDED_HISTORY   
+setopt hist_ignore_space
