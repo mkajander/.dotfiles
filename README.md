@@ -20,3 +20,12 @@ brew install eza gh powerlevel10k zsh-autosuggestions zsh-syntax-highlighting ba
 ```bash
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
 ```
+```bash
+mkdir fzf-git.sh
+curl https://raw.githubusercontent.com/junegunn/fzf-git.sh/main/fzf-git.sh -o ./fzf-git.sh/fzf-git.sh
+```
+
+```bash
+cd ${ZSH_CUSTOM1:-$ZSH/custom}/plugins
+git clone https://github.com/djui/alias-tips.git --depth 1
+```
