@@ -15,7 +15,7 @@ dotfiles config --local status.showUntrackedFiles no
 dotfiles checkout
 ```
 ```bash
-brew install eza gh powerlevel10k zsh-autosuggestions zsh-syntax-highlighting bash-completion fzf fd bat tlrc thefuck zoxide
+brew install eza gh powerlevel10k zsh-autosuggestions zsh-syntax-highlighting bash-completion fzf fd bat tlrc thefuck zoxide azure-cli
 ```
 ```bash
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
