@@ -16,6 +16,8 @@ dotfiles checkout
 ```
 ```bash
 brew install eza gh powerlevel10k zsh-autosuggestions zsh-syntax-highlighting bash-completion fzf fd bat tlrc thefuck zoxide azure-cli jesseduffield/lazygit/lazygit jesseduffield/lazydocker/lazydocker hcloud
+brew tap hashicorp/tap
+brew install hashicorp/tap/terraform
 ```
 ```bash
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
