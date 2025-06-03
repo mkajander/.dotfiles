@@ -259,3 +259,6 @@ eval $(thefuck --alias fk)
 eval "$(zoxide init zsh)"
 
 alias cd="z"
+
+# --- Env vars
+FUNCTIONS_CORE_TOOLS_TELEMETRY_OPTOUT=1
