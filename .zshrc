@@ -275,7 +275,7 @@ if [[ "$(uname -s)" == "Linux" ]]; then
     local cursor_app="$INSTALL_DIR/Cursor.AppImage"
     
     if [ -f "$cursor_app" ]; then
-      "$cursor_app" --no-sandbox "$@" &
+      "$cursor_app" --no-sandbox "$@" &> ~/.cursor.log &
     else
       echo "Cursor not found at $cursor_app"
       return 1
