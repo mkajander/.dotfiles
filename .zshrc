@@ -1,3 +1,6 @@
+if [[ "$(uname -s)" == "Linux" ]]; then
+  eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+fi
 # Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
 # Initialization code that may require console input (password prompts, [y/n]
 # confirmations, etc.) must go above this block; everything else may go below.
@@ -109,11 +112,12 @@ source $ZSH/oh-my-zsh.sh
 # Example aliases
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
-source /opt/homebrew/share/powerlevel10k/powerlevel10k.zsh-theme
-
+source $(brew --prefix)/share/powerlevel10k/powerlevel10k.zsh-theme
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
-source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+
+
+source $(brew --prefix)/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 source $(brew --prefix)/share/zsh-autosuggestions/zsh-autosuggestions.zsh
 alias copilot="gh copilot"
 alias gcs="gh copilot suggest"
@@ -214,18 +218,7 @@ _fzf_compgen_path() {
   fd --hidden --exclude .git . "$1"
 }
 
-# Use fd to generate the list for directory completion
-_fzf_compgen_dir() {
-  fd --type=d --hidden --exclude .git . "$1"
-}
-
-source ~/fzf-git.sh/fzf-git.sh
-
-show_file_or_dir_preview="if [ -d {} ]; then eza --tree --color=always {} | head -200; else bat -n --color=always --line-range :500 {}; fi"
-
-export FZF_CTRL_T_OPTS="--preview '$show_file_or_dir_preview'"
-export FZF_ALT_C_OPTS="--preview 'eza --tree --color=always {} | head -200'"
-
+# Use fd to generate the list for directory comp
 # Advanced customization of fzf options via _fzf_comprun function
 # - The first argument to the function is the name of the command.
 # - You should make sure to pass the rest of the arguments to fzf.
@@ -262,3 +255,20 @@ alias cd="z"
 
 # --- Env vars
 FUNCTIONS_CORE_TOOLS_TELEMETRY_OPTOUT=1
+alias cls="clear"
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
+# --- cursor --- If it is installed on linux, needed due to being an app image, expects to us my install script
+if [[ "$(uname -s)" == "Linux" ]]; then
+  cursor() {
+    local INSTALL_DIR="$HOME/.local/bin"
+    local cursor_app="$INSTALL_DIR/Cursor.AppImage"
+    
+    if [ -f "$cursor_app" ]; then
+      "$cursor_app" --no-sandbox "$@" &
+    else
+      echo "Cursor not found at $cursor_app"
+      return 1
+    fi
+  }
+fi
