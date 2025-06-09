@@ -268,7 +268,7 @@ FUNCTIONS_CORE_TOOLS_TELEMETRY_OPTOUT=1
 alias cls="clear"
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
-# --- cursor --- If it is installed on linux, needed due to being an app image, expects to us my install script
+# --- cursor --- If it is installed on Linux, needed due to being an AppImage, expects to use my install script
 if [[ "$(uname -s)" == "Linux" ]]; then
   cursor() {
     local INSTALL_DIR="$HOME/.local/bin"
