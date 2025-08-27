@@ -282,7 +282,21 @@ if [[ "$(uname -s)" == "Linux" ]]; then
     fi
   }
 fi
-
+# System Update command
+sup() {
+  # Check the operating system using uname
+  if [[ "$(uname -s)" == "Linux" ]]; then
+    echo "🚀 Starting system update for Linux..."
+    sudo apt update && sudo apt upgrade -y && bu && bup
+  elif [[ "$(uname -s)" == "Darwin" ]]; then
+    echo "🚀 Starting system update for macOS..."
+    bu && bup
+  else
+    echo "Unsupported operating system: $(uname -s)"
+    return 1
+  fi
+  echo "✅ System update process finished."
+}
 # andoid to $ANDROID_HOME
 if [[ -d "$HOME/Android/Sdk/platform-tools" ]]; then
   export ANDROID_HOME="$HOME/Android/Sdk"
