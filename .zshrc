@@ -45,7 +45,8 @@ ZSH_THEME="robbyrussell"
 # DISABLE_MAGIC_FUNCTIONS="true"
 
 # Uncomment the following line to disable colors in ls.
-# DISABLE_LS_COLORS="true"
+# DISABLE_LS_COLORS="true"Microsoft.NETCore.App 8.0.18 [/usr/lib/dotnet/shared/Microsoft.NETCore.App]
+
 
 # Uncomment the following line to disable auto-setting terminal title.
 # DISABLE_AUTO_TITLE="true"
@@ -128,7 +129,6 @@ autoload bashcompinit && bashcompinit
 source $(brew --prefix)/etc/bash_completion.d/az
 
 
-export PATH=$HOME/.dotnet/tools:$PATH
 # nvm
 source ~/.nvm/nvm.sh
 
@@ -282,3 +282,17 @@ if [[ "$(uname -s)" == "Linux" ]]; then
     fi
   }
 fi
+
+# andoid to $ANDROID_HOME
+if [[ -d "$HOME/Android/Sdk/platform-tools" ]]; then
+  export ANDROID_HOME="$HOME/Android/Sdk"
+  export PATH=$PATH:$ANDROID_HOME/emulator
+  export PATH=$PATH:$ANDROID_HOME/platform-tools
+else
+  echo "Android SDK not found at $HOME/Android/Sdk"
+fi
+export DOTNET_ROOT=$HOME/.dotnet
+export PATH=$PATH:$DOTNET_ROOT:$DOTNET_ROOT/tools
+
+# Generated for envman. Do not edit.
+[ -s "$HOME/.config/envman/load.sh" ] && source "$HOME/.config/envman/load.sh"
