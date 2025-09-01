@@ -282,10 +282,170 @@ if [[ "$(uname -s)" == "Linux" ]]; then
     fi
   }
 fi
+
+# End of Docker CLI completions
+alias gemini-docker='docker run --rm -it \
+  -v "${HOME}/.gemini:/home/appuser/.gemini" \
+  -e HOST_USER_ID="$(id -u)" \
+  -e HOST_GROUP_ID="$(id -g)" \
+  -e GEMINI_API_KEY="$(op read "op://Private/ipx7cvrwnk4juhkleksbyycnwa/credential")" \
+  -v "$(pwd)":/home/appuser/workspace \
+  gemini-cli'
+. "$HOME/.local/bin/env"
+
+git_force_remote_truth() {
+  emulate -L zsh
+  set -euo pipefail
+
+  usage() {
+    cat <<'USAGE'
+Usage: git-remote-truth [--no-clean] [--push-backup] [--remote <name>] [--no-backup] [--force-upstream] [--yes] [--help]
+USAGE
+  }
+
+  # Defaults
+  local remote="origin"
+  local do_clean=1
+  local do_backup=1
+  local push_backup=0
+  local force_upstream=0
+  local assume_yes=0
+
+  # Parse args
+  while (( $# )); do
+    case "$1" in
+      --no-clean) do_clean=0; shift ;;
+      --push-backup) push_backup=1; shift ;;
+      --remote)
+        if (( $# < 2 )) || [[ -z "${2:-}" ]] || [[ "$2" == --* ]]; then
+          echo "--remote requires a value (e.g., --remote origin)"; return 2
+        fi
+        remote="$2"; shift 2 ;;
+      --no-backup) do_backup=0; shift ;;
+      --force-upstream) force_upstream=1; shift ;;
+      --yes) assume_yes=1; shift ;;
+      --help|-h) usage; return 0 ;;
+      *) echo "Unknown option: $1"; usage; return 2 ;;
+    esac
+  done
+
+  # Ensure we are in a git repo
+  if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "Not inside a git repository."
+    return 1
+  fi
+
+  # Determine current branch
+  local current_branch
+  current_branch="$(git rev-parse --abbrev-ref HEAD)"
+  if [[ "$current_branch" == "HEAD" || -z "${current_branch:-}" ]]; then
+    echo "Detached HEAD; checkout a branch first."
+    return 1
+  fi
+
+  # Verify remote exists
+  if ! git remote get-url "$remote" >/dev/null 2>&1; then
+    echo "Remote '$remote' not found."
+    return 1
+  fi
+
+  # Ensure upstream exists or set if asked/possible
+  if git rev-parse --abbrev-ref "@{upstream}" >/dev/null 2>&1; then
+    :
+  else
+    if (( force_upstream )); then
+      if git ls-remote --exit-code --heads "$remote" "$current_branch" >/dev/null 2>&1; then
+        echo "Setting upstream to $remote/$current_branch"
+        git branch --set-upstream-to "$remote/$current_branch" "$current_branch"
+      else
+        echo "Remote branch $remote/$current_branch does not exist."
+        return 1
+      fi
+    else
+      echo "No upstream for '$current_branch'. Use --force-upstream or set it manually."
+      return 1
+    fi
+  fi
+
+  local ts backup_branch ans
+  ts="$(date +%Y%m%d-%H%M%S)"
+  backup_branch="backup/${current_branch}-${ts}"
+
+  # Confirmation
+  if (( ! assume_yes )); then
+    echo "About to force-sync '$current_branch' to '$remote/$current_branch'."
+    echo "Actions:"
+    if (( do_backup )); then
+      echo "  - Create backup branch: $backup_branch"
+    else
+      echo "  - NO BACKUP (dangerous)"
+    fi
+    echo "  - git fetch $remote"
+    echo "  - git reset --hard $remote/$current_branch"
+    if (( do_clean )); then
+      echo "  - git clean -fdx"
+    else
+      echo "  - Skip clean"
+    fi
+    if [ -t 0 ]; then
+      printf "Proceed? [y/N]: "
+      ans=""
+      read -r ans || true
+      case "${ans:-}" in
+        y|Y|yes|YES) ;;
+        *) echo "Aborted."; return 1 ;;
+      esac
+    else
+      echo "Non-interactive shell detected; use --yes to proceed."
+      return 1
+    fi
+  fi
+
+  if (( do_backup )); then
+    echo "Creating backup branch: $backup_branch"
+    git switch -c "$backup_branch"
+
+    echo "Staging all changes (including untracked)"
+    git add -A
+    if ! git diff --cached --quiet || ! git diff --quiet; then
+      git commit -m "Backup before remote-truth reset from $current_branch @ $ts"
+    else
+      echo "No local changes to commit; backup branch still created."
+    fi
+
+    if (( push_backup )); then
+      echo "Pushing backup branch to $remote"
+      git push -u "$remote" "$backup_branch"
+    fi
+
+    echo "Switching back to $current_branch"
+    git switch "$current_branch"
+  else
+    echo "WARNING: --no-backup specified. Proceeding without backup."
+  fi
+
+  echo "Fetching from $remote"
+  git fetch "$remote"
+
+  echo "Hard resetting $current_branch to $remote/$current_branch"
+  git reset --hard "$remote/$current_branch"
+
+  if (( do_clean )); then
+    echo "Cleaning untracked files and directories"
+    git clean -fdx
+  else
+    echo "Skipping clean due to --no-clean"
+  fi
+
+  echo "Done. '$current_branch' now matches $remote/$current_branch"
+}
+
+alias git-remote-truth='git_force_remote_truth'
+
+
 # The following lines have been added by Docker Desktop to enable Docker CLI completions.
 if [ -d "$HOME/.docker/completions" ]; then
   fpath=($HOME/.docker/completions $fpath)
 fi
 autoload -Uz compinit
 compinit
-# End of Docker CLI completions
