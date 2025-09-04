@@ -442,6 +442,108 @@ USAGE
 
 alias git-remote-truth='git_force_remote_truth'
 
+# Move local commits on main/master (that are not on origin) to a new branch
+gc_fix_main() {
+  # Ensure we're in a git repo
+  git rev-parse --git-dir >/dev/null 2>&1 || {
+    echo "Not a git repository."
+    return 1
+  }
+
+  # Detect current branch
+  local cur_branch
+  cur_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)" || return 1
+
+  if [[ "$cur_branch" != "main" && "$cur_branch" != "master" ]]; then
+    echo "You are on '$cur_branch'. This helper only operates on 'main' or 'master'."
+    return 1
+  fi
+
+  # Ensure working tree is clean
+  if [[ -n "$(git status --porcelain)" ]]; then
+    echo "Your working tree is not clean. Please stash or commit your changes first."
+    return 1
+  fi
+
+  # Make sure origin exists, then fetch so origin/<branch> is current
+  if ! git remote get-url origin >/dev/null 2>&1; then
+    echo "Remote 'origin' not found. Add it or: git remote add origin <url>"
+    return 1
+  fi
+  if ! git fetch --no-tags --prune --quiet origin; then
+    echo "git fetch origin failed. Aborting."
+    return 1
+  fi
+
+  # Determine corresponding origin branch
+  local origin_branch="origin/${cur_branch}"
+  if ! git show-ref --verify --quiet "refs/remotes/${origin_branch}"; then
+    echo "Remote branch '${origin_branch}' not found."
+    echo "Make sure 'origin' exists and fetch: git fetch origin"
+    return 1
+  fi
+
+  # Calculate how many commits we are ahead of origin
+  local ahead behind
+  if ! read -r behind ahead < <(git rev-list --left-right --count "${origin_branch}...${cur_branch}" 2>/dev/null); then
+    echo "Failed to compute ahead/behind vs ${origin_branch}."
+    return 1
+  fi
+  # ahead is the number of commits on local branch not in origin
+  if [[ "${ahead:-0}" -eq 0 ]]; then
+    echo "'${cur_branch}' is not ahead of ${origin_branch}. Nothing to move."
+    return 0
+  fi
+
+  # Prompt for new branch name (must be unique and non-empty)
+  local new_branch=""
+  while :; do
+    if typeset -f vared >/dev/null 2>&1; then
+      vared -p "Enter new branch name to move ${ahead} commit(s) to: " -c new_branch
+    else
+      printf "Enter new branch name to move %s commit(s) to: " "${ahead}"
+      read -r new_branch
+    fi
+    new_branch="${new_branch// /-}" # replace spaces with dashes
+    if [[ -z "$new_branch" ]]; then
+      echo "Branch name cannot be empty."
+      continue
+    fi
+    if ! git check-ref-format --branch "$new_branch" >/dev/null 2>&1; then
+      echo "Invalid branch name. Try a different one."
+      continue
+    fi
+    if git show-ref --verify --quiet "refs/heads/${new_branch}"; then
+      echo "Branch '${new_branch}' already exists. Choose another."
+      continue
+    fi
+    break
+  done
+
+  echo "Creating and switching to '${new_branch}' at ${cur_branch}@HEAD..."
+  if ! git checkout -b "${new_branch}" >/dev/null; then
+    echo "Failed to create or checkout '${new_branch}'."
+    return 1
+  fi
+
+  # Reset local main/master to match origin exactly
+  echo "Resetting local '${cur_branch}' to '${origin_branch}'..."
+  if ! git branch -f "${cur_branch}" "${origin_branch}"; then
+    echo "Failed to move '${cur_branch}' to '${origin_branch}'."
+    echo "Your commits remain safe on '${new_branch}'."
+    echo "You can try manually: git branch -f ${cur_branch} ${origin_branch}"
+    return 1
+  fi
+
+  echo "Done."
+  echo "- Moved ${ahead} commit(s) to '${new_branch}'."
+  echo "- Local '${cur_branch}' now matches '${origin_branch}'."
+  echo "Next:"
+  echo "  - Continue work on '${new_branch}'"
+  echo "  - Push when ready: git push -u origin ${new_branch}"
+}
+
+alias git-oops-main="gc_fix_main"
 
 # The following lines have been added by Docker Desktop to enable Docker CLI completions.
 if [ -d "$HOME/.docker/completions" ]; then
