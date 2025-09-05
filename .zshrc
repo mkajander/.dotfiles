@@ -304,7 +304,13 @@ if [[ -d "$HOME/Android/Sdk/platform-tools" ]]; then
   export PATH=$PATH:$ANDROID_HOME/emulator
   export PATH=$PATH:$ANDROID_HOME/platform-tools
 else
-  echo "Android SDK not found at $HOME/Android/Sdk"
+    if [[ "$(uname -s)" == "Linux" ]]; then
+    echo "Android SDK not found at $HOME/Android/Sdk"
+  elif [[ "$(uname -s)" == "Darwin" ]]; then
+  else
+    echo "Unsupported operating system: $(uname -s)"
+    return 1
+  fi
 fi
 
 # Generated for envman. Do not edit.
