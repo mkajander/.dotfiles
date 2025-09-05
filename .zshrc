@@ -309,10 +309,271 @@ fi
 
 # Generated for envman. Do not edit.
 [ -s "$HOME/.config/envman/load.sh" ] && source "$HOME/.config/envman/load.sh"
+
+alias gemini-docker='docker run --rm -it \
+  -v "${HOME}/.gemini:/home/appuser/.gemini" \
+  -e HOST_USER_ID="$(id -u)" \
+  -e HOST_GROUP_ID="$(id -g)" \
+  -e GEMINI_API_KEY="$(op read "op://Private/ipx7cvrwnk4juhkleksbyycnwa/credential")" \
+  -v "$(pwd)":/home/appuser/workspace \
+  gemini-cli'
+. "$HOME/.local/bin/env"
+
+git_force_remote_truth() {
+  emulate -L zsh
+  set -euo pipefail
+
+  usage() {
+    cat <<'USAGE'
+Usage: git-remote-truth [--no-clean] [--push-backup] [--remote <name>] [--no-backup] [--force-upstream] [--yes] [--help]
+USAGE
+  }
+
+  # Defaults
+  local remote="origin"
+  local do_clean=1
+  local do_backup=1
+  local push_backup=0
+  local force_upstream=0
+  local assume_yes=0
+
+  # Parse args
+  while (( $# )); do
+    case "$1" in
+      --no-clean) do_clean=0; shift ;;
+      --push-backup) push_backup=1; shift ;;
+      --remote)
+        if (( $# < 2 )) || [[ -z "${2:-}" ]] || [[ "$2" == --* ]]; then
+          echo "--remote requires a value (e.g., --remote origin)"; return 2
+        fi
+        remote="$2"; shift 2 ;;
+      --no-backup) do_backup=0; shift ;;
+      --force-upstream) force_upstream=1; shift ;;
+      --yes) assume_yes=1; shift ;;
+      --help|-h) usage; return 0 ;;
+      *) echo "Unknown option: $1"; usage; return 2 ;;
+    esac
+  done
+
+  # Ensure we are in a git repo
+  if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "Not inside a git repository."
+    return 1
+  fi
+
+  # Determine current branch
+  local current_branch
+  current_branch="$(git rev-parse --abbrev-ref HEAD)"
+  if [[ "$current_branch" == "HEAD" || -z "${current_branch:-}" ]]; then
+    echo "Detached HEAD; checkout a branch first."
+    return 1
+  fi
+
+  # Verify remote exists
+  if ! git remote get-url "$remote" >/dev/null 2>&1; then
+    echo "Remote '$remote' not found."
+    return 1
+  fi
+
+  # Ensure upstream exists or set if asked/possible
+  if git rev-parse --abbrev-ref "@{upstream}" >/dev/null 2>&1; then
+    :
+  else
+    if (( force_upstream )); then
+      if git ls-remote --exit-code --heads "$remote" "$current_branch" >/dev/null 2>&1; then
+        echo "Setting upstream to $remote/$current_branch"
+        git branch --set-upstream-to "$remote/$current_branch" "$current_branch"
+      else
+        echo "Remote branch $remote/$current_branch does not exist."
+        return 1
+      fi
+    else
+      echo "No upstream for '$current_branch'. Use --force-upstream or set it manually."
+      return 1
+    fi
+  fi
+
+  local ts backup_branch ans
+  ts="$(date +%Y%m%d-%H%M%S)"
+  backup_branch="backup/${current_branch}-${ts}"
+
+  # Confirmation
+  if (( ! assume_yes )); then
+    echo "About to force-sync '$current_branch' to '$remote/$current_branch'."
+    echo "Actions:"
+    if (( do_backup )); then
+      echo "  - Create backup branch: $backup_branch"
+    else
+      echo "  - NO BACKUP (dangerous)"
+    fi
+    echo "  - git fetch $remote"
+    echo "  - git reset --hard $remote/$current_branch"
+    if (( do_clean )); then
+      echo "  - git clean -fdx"
+    else
+      echo "  - Skip clean"
+    fi
+    if [ -t 0 ]; then
+      printf "Proceed? [y/N]: "
+      ans=""
+      read -r ans || true
+      case "${ans:-}" in
+        y|Y|yes|YES) ;;
+        *) echo "Aborted."; return 1 ;;
+      esac
+    else
+      echo "Non-interactive shell detected; use --yes to proceed."
+      return 1
+    fi
+  fi
+
+  if (( do_backup )); then
+    echo "Creating backup branch: $backup_branch"
+    git switch -c "$backup_branch"
+
+    echo "Staging all changes (including untracked)"
+    git add -A
+    if ! git diff --cached --quiet || ! git diff --quiet; then
+      git commit -m "Backup before remote-truth reset from $current_branch @ $ts"
+    else
+      echo "No local changes to commit; backup branch still created."
+    fi
+
+    if (( push_backup )); then
+      echo "Pushing backup branch to $remote"
+      git push -u "$remote" "$backup_branch"
+    fi
+
+    echo "Switching back to $current_branch"
+    git switch "$current_branch"
+  else
+    echo "WARNING: --no-backup specified. Proceeding without backup."
+  fi
+
+  echo "Fetching from $remote"
+  git fetch "$remote"
+
+  echo "Hard resetting $current_branch to $remote/$current_branch"
+  git reset --hard "$remote/$current_branch"
+
+  if (( do_clean )); then
+    echo "Cleaning untracked files and directories"
+    git clean -fdx
+  else
+    echo "Skipping clean due to --no-clean"
+  fi
+
+  echo "Done. '$current_branch' now matches $remote/$current_branch"
+}
+
+alias git-remote-truth='git_force_remote_truth'
+
+# Move local commits on main/master (that are not on origin) to a new branch
+gc_fix_main() {
+  # Ensure we're in a git repo
+  git rev-parse --git-dir >/dev/null 2>&1 || {
+    echo "Not a git repository."
+    return 1
+  }
+
+  # Detect current branch
+  local cur_branch
+  cur_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)" || return 1
+
+  if [[ "$cur_branch" != "main" && "$cur_branch" != "master" ]]; then
+    echo "You are on '$cur_branch'. This helper only operates on 'main' or 'master'."
+    return 1
+  fi
+
+  # Ensure working tree is clean
+  if [[ -n "$(git status --porcelain)" ]]; then
+    echo "Your working tree is not clean. Please stash or commit your changes first."
+    return 1
+  fi
+
+  # Make sure origin exists, then fetch so origin/<branch> is current
+  if ! git remote get-url origin >/dev/null 2>&1; then
+    echo "Remote 'origin' not found. Add it or: git remote add origin <url>"
+    return 1
+  fi
+  if ! git fetch --no-tags --prune --quiet origin; then
+    echo "git fetch origin failed. Aborting."
+    return 1
+  fi
+
+  # Determine corresponding origin branch
+  local origin_branch="origin/${cur_branch}"
+  if ! git show-ref --verify --quiet "refs/remotes/${origin_branch}"; then
+    echo "Remote branch '${origin_branch}' not found."
+    echo "Make sure 'origin' exists and fetch: git fetch origin"
+    return 1
+  fi
+
+  # Calculate how many commits we are ahead of origin
+  local ahead behind
+  if ! read -r behind ahead < <(git rev-list --left-right --count "${origin_branch}...${cur_branch}" 2>/dev/null); then
+    echo "Failed to compute ahead/behind vs ${origin_branch}."
+    return 1
+  fi
+  # ahead is the number of commits on local branch not in origin
+  if [[ "${ahead:-0}" -eq 0 ]]; then
+    echo "'${cur_branch}' is not ahead of ${origin_branch}. Nothing to move."
+    return 0
+  fi
+
+  # Prompt for new branch name (must be unique and non-empty)
+  local new_branch=""
+  while :; do
+    if typeset -f vared >/dev/null 2>&1; then
+      vared -p "Enter new branch name to move ${ahead} commit(s) to: " -c new_branch
+    else
+      printf "Enter new branch name to move %s commit(s) to: " "${ahead}"
+      read -r new_branch
+    fi
+    new_branch="${new_branch// /-}" # replace spaces with dashes
+    if [[ -z "$new_branch" ]]; then
+      echo "Branch name cannot be empty."
+      continue
+    fi
+    if ! git check-ref-format --branch "$new_branch" >/dev/null 2>&1; then
+      echo "Invalid branch name. Try a different one."
+      continue
+    fi
+    if git show-ref --verify --quiet "refs/heads/${new_branch}"; then
+      echo "Branch '${new_branch}' already exists. Choose another."
+      continue
+    fi
+    break
+  done
+
+  echo "Creating and switching to '${new_branch}' at ${cur_branch}@HEAD..."
+  if ! git checkout -b "${new_branch}" >/dev/null; then
+    echo "Failed to create or checkout '${new_branch}'."
+    return 1
+  fi
+
+  # Reset local main/master to match origin exactly
+  echo "Resetting local '${cur_branch}' to '${origin_branch}'..."
+  if ! git branch -f "${cur_branch}" "${origin_branch}"; then
+    echo "Failed to move '${cur_branch}' to '${origin_branch}'."
+    echo "Your commits remain safe on '${new_branch}'."
+    echo "You can try manually: git branch -f ${cur_branch} ${origin_branch}"
+    return 1
+  fi
+
+  echo "Done."
+  echo "- Moved ${ahead} commit(s) to '${new_branch}'."
+  echo "- Local '${cur_branch}' now matches '${origin_branch}'."
+  echo "Next:"
+  echo "  - Continue work on '${new_branch}'"
+  echo "  - Push when ready: git push -u origin ${new_branch}"
+}
+
+alias git-oops-main="gc_fix_main"
+
 # The following lines have been added by Docker Desktop to enable Docker CLI completions.
 if [ -d "$HOME/.docker/completions" ]; then
   fpath=($HOME/.docker/completions $fpath)
 fi
 autoload -Uz compinit
 compinit
-# End of Docker CLI completions
