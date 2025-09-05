@@ -7,7 +7,8 @@ fi
 if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
 fi
-
+export DOTNET_ROOT="$HOME/.dotnet"
+export PATH="$DOTNET_ROOT:$HOME/.dotnet/tools:$PATH"
 # If you come from bash you might have to change your $PATH.
 # export PATH=$HOME/bin:$HOME/.local/bin:/usr/local/bin:$PATH
 
@@ -46,6 +47,7 @@ ZSH_THEME="robbyrussell"
 
 # Uncomment the following line to disable colors in ls.
 # DISABLE_LS_COLORS="true"
+
 
 # Uncomment the following line to disable auto-setting terminal title.
 # DISABLE_AUTO_TITLE="true"
@@ -128,7 +130,6 @@ autoload bashcompinit && bashcompinit
 source $(brew --prefix)/etc/bash_completion.d/az
 
 
-export PATH=$HOME/.dotnet/tools:$PATH
 # nvm
 source ~/.nvm/nvm.sh
 
@@ -282,8 +283,33 @@ if [[ "$(uname -s)" == "Linux" ]]; then
     fi
   }
 fi
+# System Update command
+sup() {
+  # Check the operating system using uname
+  if [[ "$(uname -s)" == "Linux" ]]; then
+    echo "🚀 Starting system update for Linux..."
+    sudo apt update && sudo apt upgrade -y && bu && bup
+  elif [[ "$(uname -s)" == "Darwin" ]]; then
+    echo "🚀 Starting system update for macOS..."
+    bu && bup
+  else
+    echo "Unsupported operating system: $(uname -s)"
+    return 1
+  fi
+  echo "✅ System update process finished."
+}
+# andoid to $ANDROID_HOME
+if [[ -d "$HOME/Android/Sdk/platform-tools" ]]; then
+  export ANDROID_HOME="$HOME/Android/Sdk"
+  export PATH=$PATH:$ANDROID_HOME/emulator
+  export PATH=$PATH:$ANDROID_HOME/platform-tools
+else
+  echo "Android SDK not found at $HOME/Android/Sdk"
+fi
 
-# End of Docker CLI completions
+# Generated for envman. Do not edit.
+[ -s "$HOME/.config/envman/load.sh" ] && source "$HOME/.config/envman/load.sh"
+
 alias gemini-docker='docker run --rm -it \
   -v "${HOME}/.gemini:/home/appuser/.gemini" \
   -e HOST_USER_ID="$(id -u)" \
