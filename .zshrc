@@ -316,15 +316,6 @@ fi
 # Generated for envman. Do not edit.
 [ -s "$HOME/.config/envman/load.sh" ] && source "$HOME/.config/envman/load.sh"
 
-alias gemini-docker='docker run --rm -it \
-  -v "${HOME}/.gemini:/home/appuser/.gemini" \
-  -e HOST_USER_ID="$(id -u)" \
-  -e HOST_GROUP_ID="$(id -g)" \
-  -e GEMINI_API_KEY="$(op read "op://Private/ipx7cvrwnk4juhkleksbyycnwa/credential")" \
-  -v "$(pwd)":/home/appuser/workspace \
-  gemini-cli'
-. "$HOME/.local/bin/env"
-
 git_force_remote_truth() {
   emulate -L zsh
   set -euo pipefail
